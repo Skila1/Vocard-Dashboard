@@ -50,94 +50,154 @@ function updateWarningBar(status) {
     status ? warningBar.fadeIn() : warningBar.fadeOut()
 }
 
-function formatAdminHealthDetails(data) {
-    const lines = []
-    const components = Array.isArray(data?.components) ? data.components : []
-    components.forEach((component) => {
-        if (!component) {
-            return
-        }
-        const name = component.component || component.kind || "component"
-        const status = component.status || "unknown"
-        const version = component.installed_version ? ` ${component.installed_version}` : ""
-        let line = `${name}: ${status}${version}`
-        if (component.message) {
-            line += ` — ${component.message}`
-        }
-        const lastError = component.last_error
-        if (lastError && (lastError.code || lastError.detail)) {
-            line += ` [${[lastError.code, lastError.detail].filter(Boolean).join(": ")}]`
-        }
-        lines.push(line)
-    })
-    const failure = data?.playbackFailure
-    if (failure) {
-        const parts = [failure.code, failure.source, failure.title].filter(Boolean)
-        if (parts.length) {
-            lines.push(`Last failure: ${parts.join(" / ")}`)
+function diagnosticsText(key, fallback) {
+    return (typeof localeTexts !== "undefined" && localeTexts.diagnostics && localeTexts.diagnostics[key]) || fallback
+}
+
+function appendTextRow($parent, label, value) {
+    if (!value) {
+        return
+    }
+    const $row = $("<div>")
+    $row.append($("<dt>").text(label))
+    $row.append($("<dd>").text(value))
+    $parent.append($row)
+}
+
+function resetPlaybackHealthUi() {
+    const $bar = $("#playback-health-bar")
+    const $message = $("#playback-health-message")
+    const $link = $("#playback-health-diagnostics-link")
+    const $menu = $("#menu-diagnostics-page")
+    $message.empty()
+    $link.hide()
+    $bar.removeClass("track").hide()
+    $menu.css("display", "none")
+    renderDiagnosticsPage({})
+}
+
+function updateDiagnosticsNavigation(isAdmin) {
+    const $menu = $("#menu-diagnostics-page")
+    if (!$menu.length) {
+        return
+    }
+    $menu.css("display", isAdmin ? "flex" : "none")
+    if (!isAdmin && $(".main-container").find(".sections:visible").attr("id") === "diagnostics-page") {
+        changePage("main-page")
+    }
+}
+
+function renderDiagnosticsPage(data) {
+    const ui = window.PlaybackHealthUI
+    if (!ui) {
+        return
+    }
+    const model = ui.diagnosticsModel(data)
+    const $components = $("#diagnostics-components")
+    const $healthy = $("#diagnostics-healthy-msg")
+    const $failure = $("#diagnostics-failure")
+    const $failureMeta = $("#diagnostics-failure-meta")
+    const $error = $("#diagnostics-error")
+    const $errorPreview = $("#diagnostics-error-preview")
+    const $errorFull = $("#diagnostics-error-full")
+    const $errorToggle = $("#diagnostics-error-toggle")
+
+    if ($components.length) {
+        $components.empty()
+        model.components.forEach((component) => {
+            const $card = $("<div>").addClass("diagnostics-card").addClass(`status-${component.status}`)
+            $card.append($("<p>").addClass("diagnostics-card-title").text(component.title))
+            if (component.identifier) {
+                $card.append($("<p>").addClass("diagnostics-identifier").text(component.identifier))
+            }
+            $card.append($("<span>").addClass("diagnostics-status").addClass(`status-${component.status}`).text(component.statusLabel))
+            const $meta = $("<dl>").addClass("diagnostics-meta")
+            if (component.installed) {
+                const versionLabel = component.kind === "lavalink" ? diagnosticsText("version", "Version") : diagnosticsText("installed", "Installed")
+                appendTextRow($meta, versionLabel, component.installed)
+            }
+            if (component.available) {
+                appendTextRow($meta, diagnosticsText("version", "Version"), component.available)
+            }
+            $card.append($meta)
+            if (component.message) {
+                $card.append($("<p>").addClass("diagnostics-identifier").text(component.message))
+            }
+            $components.append($card)
+        })
+    }
+
+    if ($healthy.length) {
+        if (model.healthyMessage) {
+            $healthy.text(diagnosticsText("allHealthy", model.healthyMessage)).show()
+        } else {
+            $healthy.hide().empty()
         }
     }
-    return lines
+
+    if ($failure.length) {
+        $failureMeta.empty()
+        if (model.failure) {
+            $("#diagnostics-failure-title").text(diagnosticsText("lastFailure", "Last Playback Failure"))
+            appendTextRow($failureMeta, diagnosticsText("track", "Track"), model.failure.title)
+            appendTextRow($failureMeta, diagnosticsText("source", "Source"), model.failure.source)
+            appendTextRow($failureMeta, diagnosticsText("classification", "Classification"), model.failure.code)
+            $failure.show()
+        } else {
+            $failure.hide()
+        }
+    }
+
+    if ($error.length) {
+        $errorPreview.text("")
+        $errorFull.text("").hide()
+        $errorToggle.hide()
+        if (model.lastError && model.lastError.preview) {
+            $("#diagnostics-error-title").text(diagnosticsText("lastError", "Last Error"))
+            $errorPreview.text(model.lastError.preview)
+            if (model.lastError.expandable) {
+                $errorFull.text(model.lastError.full)
+                $errorToggle.text(diagnosticsText("showDetails", "Show details")).data("expanded", false).show()
+            }
+            $error.show()
+        } else {
+            $error.hide()
+        }
+    }
 }
 
 function updatePlaybackHealthBar(data) {
+    const ui = window.PlaybackHealthUI
     const $bar = $("#playback-health-bar")
     const $message = $("#playback-health-message")
-    const $admin = $("#playback-health-admin")
-    const $adminDetails = $("#playback-health-admin-details")
-    if (!$bar.length) {
+    const $link = $("#playback-health-diagnostics-link")
+    if (!$bar.length || !ui) {
         return
     }
 
-    const isAdmin = data?.admin === true
-    const components = Array.isArray(data?.components) ? data.components : []
-    const unhealthy = components.find((component) => component && ["degraded", "unavailable"].includes(component.status))
-    const failure = data?.playbackFailure
-    const publicMessage = data?.message
+    const model = ui.diagnosticsModel(data || {})
+    updateDiagnosticsNavigation(model.sidebarVisible)
+    renderDiagnosticsPage(data || {})
 
-    if ($admin.length) {
-        $admin.hide()
-        if ($adminDetails.length) {
-            $adminDetails.empty()
-        }
-    }
+    $message.empty()
+    $link.hide()
+    $bar.removeClass("track")
 
-    if (isAdmin) {
-        const adminLines = formatAdminHealthDetails(data)
-        if (unhealthy) {
-            $message.text(unhealthy.message || publicMessage || "Playback infrastructure is reporting failures.")
-            $bar.removeClass("track")
-        } else if (failure) {
-            const title = failure.title ? `Couldn't play ${failure.title}.` : "This track could not be played."
-            $message.text(failure.code ? `${title} (${failure.code})` : title)
-            $bar.addClass("track")
-        } else {
-            $bar.fadeOut()
-            return
-        }
-        if (adminLines.length && $admin.length) {
-            adminLines.forEach((line) => $adminDetails.append($("<li>").text(line)))
-            $admin.show()
-        }
-        $bar.fadeIn()
+    if (!model.banner.visible) {
+        $bar.hide()
         return
     }
 
-    if (publicMessage) {
-        $message.text(publicMessage)
-        $bar.removeClass("track")
-        $bar.fadeIn()
-        return
+    model.banner.lines.forEach((line) => {
+        $message.append($("<p>").text(line))
+    })
+    if (model.viewLinkVisible) {
+        $link.text(diagnosticsText("viewDiagnostics", "View diagnostics")).css("display", "inline")
     }
-
-    if (failure) {
-        $message.text(failure.userMessage || (failure.title ? `Couldn't play ${failure.title}.` : "This track could not be played."))
+    if (model.banner.tone === "track") {
         $bar.addClass("track")
-        $bar.fadeIn()
-        return
     }
-
-    $bar.fadeOut()
+    $bar.show()
 }
 
 function updatePrimaryColor(color) {
@@ -661,6 +721,23 @@ function buildShortcutsModalHtml() {
 
 $(document).ready(function () {
     const player = new Player()
+
+    $(document).on("click", "#playback-health-diagnostics-link", function (e) {
+        e.preventDefault()
+        changePage("diagnostics-page", true, false)
+    })
+
+    $(document).on("click", "#diagnostics-error-toggle", function () {
+        const $full = $("#diagnostics-error-full")
+        const expanded = $(this).data("expanded") === true
+        $full.toggle(!expanded)
+        $(this).data("expanded", !expanded)
+        $(this).text(
+            expanded
+                ? diagnosticsText("showDetails", "Show details")
+                : diagnosticsText("hideDetails", "Hide details")
+        )
+    })
 
     $(document).keydown(function (e) {
         const $target = $(e.target)
