@@ -147,6 +147,38 @@ class HealthSerializationTests(unittest.TestCase):
         self.assertEqual(payload["playbackFailure"]["title"], "Never Gonna Give You Up")
         self.assert_no_admin_leaks(payload)
 
+    def test_admin_payload_shows_degraded_after_first_source_failure(self):
+        health = {
+            "components": [
+                {
+                    "component": "source:youtube",
+                    "status": "degraded",
+                    "severity": "warning",
+                    "installed_version": "1.18.0",
+                    "available_version": None,
+                    "message": "YouTube source is reporting failures. Installed plugin: youtube-plugin 1.18.0.",
+                    "last_error": {"code": "SOURCE_AUTH_REQUIRED", "detail": "AllClientsFailedException"},
+                    "last_seen": 1,
+                }
+            ],
+            "playbackFailure": {
+                "code": "SOURCE_AUTH_REQUIRED",
+                "title": "Stateside",
+                "source": "youtube",
+            },
+        }
+        admin = serialize_health_for_user(health, ADMIN_ID, admin_user_id=ADMIN_ID)
+        self.assertTrue(admin["admin"])
+        self.assertEqual(admin["components"][0]["status"], "degraded")
+        self.assertEqual(admin["components"][0]["last_error"]["code"], "SOURCE_AUTH_REQUIRED")
+        self.assertEqual(admin["playbackFailure"]["code"], "SOURCE_AUTH_REQUIRED")
+
+        public = serialize_health_for_user(health, USER_ID, admin_user_id=ADMIN_ID)
+        self.assertFalse(public["admin"])
+        self.assertEqual(public["components"], [{"kind": "youtube", "status": "degraded"}])
+        self.assertEqual(public["message"], "YouTube playback is currently experiencing problems.")
+        self.assert_no_admin_leaks(public)
+
     def test_no_admin_configured_strips_diagnostics(self):
         payload = serialize_health_for_user(SAMPLE_HEALTH, ADMIN_ID, admin_user_id=None)
         self.assertFalse(payload["admin"])
