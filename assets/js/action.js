@@ -50,28 +50,88 @@ function updateWarningBar(status) {
     status ? warningBar.fadeIn() : warningBar.fadeOut()
 }
 
+function formatAdminHealthDetails(data) {
+    const lines = []
+    const components = Array.isArray(data?.components) ? data.components : []
+    components.forEach((component) => {
+        if (!component) {
+            return
+        }
+        const name = component.component || component.kind || "component"
+        const status = component.status || "unknown"
+        const version = component.installed_version ? ` ${component.installed_version}` : ""
+        let line = `${name}: ${status}${version}`
+        if (component.message) {
+            line += ` — ${component.message}`
+        }
+        const lastError = component.last_error
+        if (lastError && (lastError.code || lastError.detail)) {
+            line += ` [${[lastError.code, lastError.detail].filter(Boolean).join(": ")}]`
+        }
+        lines.push(line)
+    })
+    const failure = data?.playbackFailure
+    if (failure) {
+        const parts = [failure.code, failure.source, failure.title].filter(Boolean)
+        if (parts.length) {
+            lines.push(`Last failure: ${parts.join(" / ")}`)
+        }
+    }
+    return lines
+}
+
 function updatePlaybackHealthBar(data) {
     const $bar = $("#playback-health-bar")
     const $message = $("#playback-health-message")
+    const $admin = $("#playback-health-admin")
+    const $adminDetails = $("#playback-health-admin-details")
     if (!$bar.length) {
         return
     }
 
+    const isAdmin = data?.admin === true
     const components = Array.isArray(data?.components) ? data.components : []
     const unhealthy = components.find((component) => component && ["degraded", "unavailable"].includes(component.status))
     const failure = data?.playbackFailure
+    const publicMessage = data?.message
 
-    if (unhealthy) {
-        const text = unhealthy.message || "Playback infrastructure is reporting failures. Check your Lavalink node and source plugins."
-        $message.text(text)
+    if ($admin.length) {
+        $admin.hide()
+        if ($adminDetails.length) {
+            $adminDetails.empty()
+        }
+    }
+
+    if (isAdmin) {
+        const adminLines = formatAdminHealthDetails(data)
+        if (unhealthy) {
+            $message.text(unhealthy.message || publicMessage || "Playback infrastructure is reporting failures.")
+            $bar.removeClass("track")
+        } else if (failure) {
+            const title = failure.title ? `Couldn't play ${failure.title}.` : "This track could not be played."
+            $message.text(failure.code ? `${title} (${failure.code})` : title)
+            $bar.addClass("track")
+        } else {
+            $bar.fadeOut()
+            return
+        }
+        if (adminLines.length && $admin.length) {
+            adminLines.forEach((line) => $adminDetails.append($("<li>").text(line)))
+            $admin.show()
+        }
+        $bar.fadeIn()
+        return
+    }
+
+    if (publicMessage) {
+        $message.text(publicMessage)
         $bar.removeClass("track")
         $bar.fadeIn()
         return
     }
 
-    if (failure && failure.title) {
-        const reason = failure.code === "TRACK_UNAVAILABLE" ? "video unavailable" : "could not be played"
-        $message.text(`Couldn't play ${failure.title} (${reason}).`)
+    if (failure) {
+        $message.text(failure.userMessage || (failure.title ? `Couldn't play ${failure.title}.` : "This track could not be played."))
         $bar.addClass("track")
         $bar.fadeIn()
         return

@@ -241,7 +241,13 @@
                     <p>{{ _("Some errors occurred and the dashboard could not be connected") }}</p>
                 </div>
                 <div class="playback-health-bar" id="playback-health-bar" style="display: none">
-                    <p id="playback-health-message"></p>
+                    <div class="playback-health-content">
+                        <p id="playback-health-message"></p>
+                        <div class="playback-health-admin" id="playback-health-admin" style="display: none">
+                            <p class="playback-health-admin-label">Admin diagnostics</p>
+                            <ul id="playback-health-admin-details"></ul>
+                        </div>
+                    </div>
                 </div>
                 <div class="sections error-container" id="bot-not-found">
                     <img src="{{ url_for('static', filename='img/not-found.svg') }}" alt />
