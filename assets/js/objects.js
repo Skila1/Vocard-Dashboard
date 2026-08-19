@@ -321,6 +321,12 @@ const methods = {
         player.filters = data?.filters;
         player.updateFilterView();
 
+        if (data.health) {
+            methods.playbackHealth(player, data.health);
+        } else {
+            player.send({ op: "getHealth" });
+        }
+
         $("#queue").sortable({
             animation: 150,
             ghostClass: "sortable-ghost",
@@ -997,6 +1003,12 @@ const methods = {
 
     errorMsg: function (player, data) {
         player.tm.showToast(data["level"], data["msg"]);
+    },
+
+    playbackHealth: function (player, data) {
+        if (typeof updatePlaybackHealthBar === "function") {
+            updatePlaybackHealthBar(data || {});
+        }
     },
 };
 

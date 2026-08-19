@@ -157,6 +157,25 @@ body {
 	}
 }
 
+.playback-health-bar {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.9375rem;
+	background-color: var(--alert-color-red);
+	padding: 0.5rem 1rem;
+	text-align: center;
+
+	p {
+		color: var(--text);
+		margin: 0;
+	}
+
+	&.track {
+		background-color: var(--alert-color-yellow, #c9a227);
+	}
+}
+
 .main-container {
 	grid-area: main;
 	display: flex;

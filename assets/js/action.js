@@ -50,6 +50,36 @@ function updateWarningBar(status) {
     status ? warningBar.fadeIn() : warningBar.fadeOut()
 }
 
+function updatePlaybackHealthBar(data) {
+    const $bar = $("#playback-health-bar")
+    const $message = $("#playback-health-message")
+    if (!$bar.length) {
+        return
+    }
+
+    const components = Array.isArray(data?.components) ? data.components : []
+    const unhealthy = components.find((component) => component && ["degraded", "unavailable"].includes(component.status))
+    const failure = data?.playbackFailure
+
+    if (unhealthy) {
+        const text = unhealthy.message || "Playback infrastructure is reporting failures. Check your Lavalink node and source plugins."
+        $message.text(text)
+        $bar.removeClass("track")
+        $bar.fadeIn()
+        return
+    }
+
+    if (failure && failure.title) {
+        const reason = failure.code === "TRACK_UNAVAILABLE" ? "video unavailable" : "could not be played"
+        $message.text(`Couldn't play ${failure.title} (${reason}).`)
+        $bar.addClass("track")
+        $bar.fadeIn()
+        return
+    }
+
+    $bar.fadeOut()
+}
+
 function updatePrimaryColor(color) {
     const $colorSelectContainer = $("#user-settings-page .color-select-container")
 
