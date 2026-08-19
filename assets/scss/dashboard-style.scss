@@ -172,8 +172,13 @@ body {
 		margin: 0;
 	}
 
-	&.track {
+	&.track,
+	&.degraded {
 		background-color: var(--alert-color-yellow, #c9a227);
+	}
+
+	&.unavailable {
+		background-color: var(--alert-color-red);
 	}
 
 	.playback-health-content {

@@ -71,7 +71,7 @@ function resetPlaybackHealthUi() {
     const $menu = $("#menu-diagnostics-page")
     $message.empty()
     $link.hide()
-    $bar.removeClass("track").hide()
+    $bar.removeClass("track degraded unavailable").hide()
     $menu.css("display", "none")
     renderDiagnosticsPage({})
 }
@@ -181,7 +181,7 @@ function updatePlaybackHealthBar(data) {
 
     $message.empty()
     $link.hide()
-    $bar.removeClass("track")
+    $bar.removeClass("track degraded unavailable")
 
     if (!model.banner.visible) {
         $bar.hide()
@@ -194,8 +194,10 @@ function updatePlaybackHealthBar(data) {
     if (model.viewLinkVisible) {
         $link.text(diagnosticsText("viewDiagnostics", "View diagnostics")).css("display", "inline")
     }
-    if (model.banner.tone === "track") {
-        $bar.addClass("track")
+    if (model.banner.tone === "degraded" || model.banner.tone === "track") {
+        $bar.addClass(model.banner.tone)
+    } else if (model.banner.tone === "unavailable") {
+        $bar.addClass("unavailable")
     }
     $bar.show()
 }

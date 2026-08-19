@@ -61,6 +61,7 @@ function bannerText(data) {
 }
 
 const adminBanner = ui.compactBanner(ADMIN_HEALTH)
+assert.strictEqual(adminBanner.tone, "degraded")
 assert.strictEqual(adminBanner.showDiagnosticsLink, true, "admin warning has View diagnostics")
 assert.ok(adminBanner.lines.some((line) => line.indexOf("PinkPantheress") !== -1))
 assert.ok(adminBanner.lines.some((line) => line.indexOf("YouTube playback is currently experiencing problems.") !== -1))
@@ -91,6 +92,7 @@ assert.ok(adminModel.lastError.full.indexOf("<img src=x onerror=alert(1)>") !== 
 assert.ok(adminModel.lastError.preview.indexOf("<img") !== -1)
 
 const publicBanner = ui.compactBanner(PUBLIC_HEALTH)
+assert.strictEqual(publicBanner.tone, "degraded")
 assert.strictEqual(publicBanner.showDiagnosticsLink, false)
 assert.ok(publicBanner.visible)
 assert.ok(bannerText(PUBLIC_HEALTH).indexOf("YouTube playback is currently experiencing problems.") !== -1)
@@ -116,6 +118,31 @@ const missing = ui.diagnosticsModel({})
 assert.strictEqual(missing.sidebarVisible, false)
 assert.strictEqual(missing.banner.visible, false)
 assert.deepStrictEqual(missing.components, [])
+
+assert.strictEqual(
+    ui.compactBanner({
+        components: [{ component: "source:youtube", status: "ok" }],
+        playbackFailure: { title: "Private video" },
+    }).tone,
+    "track"
+)
+assert.strictEqual(
+    ui.compactBanner({
+        components: [{ component: "node:DEFAULT", status: "unavailable" }],
+        message: "Playback is currently unavailable.",
+    }).tone,
+    "unavailable"
+)
+assert.strictEqual(
+    ui.compactBanner({
+        components: [
+            { component: "node:DEFAULT", status: "unavailable" },
+            { component: "source:youtube", status: "degraded" },
+        ],
+        message: "Playback is currently unavailable.",
+    }).tone,
+    "unavailable"
+)
 
 const htmlError = ui.truncateError("<b>AllClientsFailedException</b> " + "x".repeat(200), 40)
 assert.strictEqual(htmlError.expandable, true)

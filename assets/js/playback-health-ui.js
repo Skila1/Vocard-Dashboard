@@ -143,11 +143,22 @@
         var isAdmin = data.admin === true
         var components = Array.isArray(data.components) ? data.components : []
         var failure = data.playbackFailure
-        var unhealthy = components.some(function (component) {
-            return component && UNHEALTHY[component.status]
+        var hasUnavailable = components.some(function (component) {
+            return component && component.status === "unavailable"
         })
-        var lines = []
+        var hasDegraded = components.some(function (component) {
+            return component && component.status === "degraded"
+        })
+        var tone = null
+        if (hasUnavailable) {
+            tone = "unavailable"
+        } else if (hasDegraded) {
+            tone = "degraded"
+        } else if (failure) {
+            tone = "track"
+        }
 
+        var lines = []
         if (failure) {
             if (failure.title) {
                 lines.push("Couldn't play " + text(failure.title) + ".")
@@ -172,7 +183,7 @@
             visible: lines.length > 0,
             lines: lines,
             showDiagnosticsLink: isAdmin && lines.length > 0,
-            tone: unhealthy ? "source" : failure ? "track" : null,
+            tone: tone,
         }
     }
 
