@@ -21,6 +21,7 @@ class DiagnosticsTemplateTests(unittest.TestCase):
         index = read("templates/index.html")
         self.assertIn('id="playback-health-bar"', index)
         self.assertIn('id="playback-health-diagnostics-link"', index)
+        self.assertIn('id="playback-health-close"', index)
         self.assertIn("View diagnostics", index)
         self.assertNotIn("playback-health-admin-details", index)
         self.assertNotIn("Admin diagnostics", index)

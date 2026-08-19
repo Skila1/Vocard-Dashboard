@@ -144,6 +144,18 @@ assert.strictEqual(
     "unavailable"
 )
 
+assert.strictEqual(ui.BANNER_AUTO_DISMISS_MS, 5000)
+const dismissedBanner = ui.compactBanner(PUBLIC_HEALTH)
+const dismissedSig = ui.bannerSignature(dismissedBanner)
+assert.ok(ui.shouldShowHealthBanner(dismissedBanner, ""))
+assert.ok(!ui.shouldShowHealthBanner(dismissedBanner, dismissedSig))
+assert.ok(!ui.shouldShowHealthBanner({ visible: false, lines: [] }, ""))
+const otherBanner = ui.compactBanner({
+    components: [{ component: "node:DEFAULT", status: "unavailable" }],
+    message: "Playback is currently unavailable.",
+})
+assert.ok(ui.shouldShowHealthBanner(otherBanner, dismissedSig))
+
 const htmlError = ui.truncateError("<b>AllClientsFailedException</b> " + "x".repeat(200), 40)
 assert.strictEqual(htmlError.expandable, true)
 assert.ok(htmlError.preview.startsWith("<b>AllClientsFailedException</b>"))

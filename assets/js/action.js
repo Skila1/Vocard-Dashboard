@@ -64,14 +64,42 @@ function appendTextRow($parent, label, value) {
     $parent.append($row)
 }
 
-function resetPlaybackHealthUi() {
+var playbackHealthBannerTimer = null
+var playbackHealthBannerDismissed = ""
+
+function clearPlaybackHealthBannerTimer() {
+    if (playbackHealthBannerTimer) {
+        clearTimeout(playbackHealthBannerTimer)
+        playbackHealthBannerTimer = null
+    }
+}
+
+function hidePlaybackHealthBanner(signature) {
     const $bar = $("#playback-health-bar")
+    clearPlaybackHealthBannerTimer()
+    if (signature) {
+        playbackHealthBannerDismissed = signature
+    }
+    $bar.removeClass("track degraded unavailable").hide()
+}
+
+function schedulePlaybackHealthBannerDismiss(signature) {
+    const ui = window.PlaybackHealthUI
+    const delay = (ui && ui.BANNER_AUTO_DISMISS_MS) || 5000
+    clearPlaybackHealthBannerTimer()
+    playbackHealthBannerTimer = setTimeout(function () {
+        hidePlaybackHealthBanner(signature)
+    }, delay)
+}
+
+function resetPlaybackHealthUi() {
     const $message = $("#playback-health-message")
     const $link = $("#playback-health-diagnostics-link")
     const $menu = $("#menu-diagnostics-page")
     $message.empty()
     $link.hide()
-    $bar.removeClass("track degraded unavailable").hide()
+    hidePlaybackHealthBanner("")
+    playbackHealthBannerDismissed = ""
     $menu.css("display", "none")
     renderDiagnosticsPage({})
 }
@@ -171,6 +199,7 @@ function updatePlaybackHealthBar(data) {
     const $bar = $("#playback-health-bar")
     const $message = $("#playback-health-message")
     const $link = $("#playback-health-diagnostics-link")
+    const $close = $("#playback-health-close")
     if (!$bar.length || !ui) {
         return
     }
@@ -184,6 +213,13 @@ function updatePlaybackHealthBar(data) {
     $bar.removeClass("track degraded unavailable")
 
     if (!model.banner.visible) {
+        playbackHealthBannerDismissed = ""
+        hidePlaybackHealthBanner("")
+        return
+    }
+
+    const signature = ui.bannerSignature(model.banner)
+    if (!ui.shouldShowHealthBanner(model.banner, playbackHealthBannerDismissed)) {
         $bar.hide()
         return
     }
@@ -194,12 +230,17 @@ function updatePlaybackHealthBar(data) {
     if (model.viewLinkVisible) {
         $link.text(diagnosticsText("viewDiagnostics", "View diagnostics")).css("display", "inline")
     }
+    if ($close.length) {
+        $close.attr("aria-label", diagnosticsText("close", "Close"))
+    }
     if (model.banner.tone === "degraded" || model.banner.tone === "track") {
         $bar.addClass(model.banner.tone)
     } else if (model.banner.tone === "unavailable") {
         $bar.addClass("unavailable")
     }
+    $bar.data("bannerSignature", signature)
     $bar.show()
+    schedulePlaybackHealthBannerDismiss(signature)
 }
 
 function updatePrimaryColor(color) {
@@ -727,6 +768,12 @@ $(document).ready(function () {
     $(document).on("click", "#playback-health-diagnostics-link", function (e) {
         e.preventDefault()
         changePage("diagnostics-page", true, false)
+    })
+
+    $(document).on("click", "#playback-health-close", function (e) {
+        e.preventDefault()
+        const $bar = $("#playback-health-bar")
+        hidePlaybackHealthBanner($bar.data("bannerSignature") || playbackHealthBannerDismissed)
     })
 
     $(document).on("click", "#diagnostics-error-toggle", function () {

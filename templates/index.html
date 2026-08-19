@@ -228,6 +228,7 @@
                     lastError: "{{ _('Last Error') }}",
                     showDetails: "{{ _('Show details') }}",
                     hideDetails: "{{ _('Hide details') }}",
+                    close: "{{ _('Close') }}",
                     track: "{{ _('Track') }}",
                     source: "{{ _('Source') }}",
                     classification: "{{ _('Classification') }}",
@@ -258,6 +259,9 @@
                     <p>{{ _("Some errors occurred and the dashboard could not be connected") }}</p>
                 </div>
                 <div class="playback-health-bar" id="playback-health-bar" style="display: none">
+                    <button type="button" class="playback-health-close" id="playback-health-close" aria-label="{{ _('Close') }}">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
                     <div class="playback-health-content">
                         <div id="playback-health-message"></div>
                         <button type="button" class="playback-health-link" id="playback-health-diagnostics-link" style="display: none">

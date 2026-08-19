@@ -138,6 +138,22 @@
         return result
     }
 
+    var BANNER_AUTO_DISMISS_MS = 5000
+
+    function bannerSignature(banner) {
+        if (!banner || !banner.visible) {
+            return ""
+        }
+        return [banner.tone || "", (banner.lines || []).join("\n")].join("|")
+    }
+
+    function shouldShowHealthBanner(banner, dismissedSignature) {
+        if (!banner || !banner.visible) {
+            return false
+        }
+        return bannerSignature(banner) !== (dismissedSignature || "")
+    }
+
     function compactBanner(data) {
         data = data || {}
         var isAdmin = data.admin === true
@@ -263,6 +279,7 @@
 
     return {
         ERROR_PREVIEW_LIMIT: ERROR_PREVIEW_LIMIT,
+        BANNER_AUTO_DISMISS_MS: BANNER_AUTO_DISMISS_MS,
         compactBanner: compactBanner,
         diagnosticsModel: diagnosticsModel,
         describeComponent: describeComponent,
@@ -270,5 +287,7 @@
         sourceLabel: sourceLabel,
         truncateError: truncateError,
         publicMessageFromComponents: publicMessageFromComponents,
+        bannerSignature: bannerSignature,
+        shouldShowHealthBanner: shouldShowHealthBanner,
     }
 })
